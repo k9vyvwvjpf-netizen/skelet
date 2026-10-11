@@ -1,0 +1,1441 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#1a120b">
+<title>СКЕЛЕТ КЛИКЕР</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1a120b;
+  --panel: #2a1f14;
+  --panel2: #3a2b1c;
+  --line: #6b4e32;
+  --text: #f5e6c8;
+  --muted: #b89b72;
+  --sand: #e8c98a;
+  --gold: #f0c14a;
+  --orange: #e07a3a;
+  --red: #d94b3d;
+  --green: #8bc34a;
+  --bone: #f0e0c0;
+  --bone-dark: #d4c0a0;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; image-rendering: pixelated; }
+
+body {
+  margin: 0;
+  background: #1a120b;
+  background-image:
+    linear-gradient(rgba(26,18,11,0.88), rgba(26,18,11,0.95)),
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px);
+  color: var(--text);
+  font-family: "Press Start 2P", system-ui, monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px 10px 90px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--line);
+}
+
+.brand { font-size: 11px; letter-spacing: 1px; line-height: 1.3; }
+.brand span { color: var(--gold); }
+.subbrand { font-size: 7px; color: var(--muted); margin-top: 4px; letter-spacing: 1px; }
+
+.pill {
+  background: var(--panel2);
+  border: 3px solid var(--line);
+  padding: 8px 10px;
+  font-size: 11px;
+  box-shadow: 3px 3px 0 #000;
+}
+.pill small {
+  display: block;
+  font-size: 6px;
+  color: var(--gold);
+  margin-top: 3px;
+  text-align: right;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.stat {
+  background: var(--panel);
+  border: 3px solid var(--line);
+  padding: 8px 6px;
+  text-align: center;
+  box-shadow: 2px 2px 0 #000;
+}
+.stat .label { font-size: 6px; color: var(--muted); letter-spacing: 0.5px; }
+.stat .value { font-size: 11px; margin-top: 4px; color: var(--sand); }
+
+.card {
+  background: var(--panel);
+  border: 3px solid var(--line);
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 4px 4px 0 #000;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  margin-bottom: 10px;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+}
+.badge {
+  font-size: 7px;
+  color: var(--green);
+  background: #1f2a14;
+  border: 2px solid #3d5c28;
+  padding: 3px 6px;
+}
+
+.skeleton-stage {
+  position: relative;
+  overflow: hidden;
+  background: #1f160e;
+  border: 3px solid var(--line);
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 40px #000a;
+}
+.skeleton-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 70%, #3a2b1c66 0%, transparent 55%),
+    radial-gradient(circle at 50% 30%, #e8c98a11 0%, transparent 50%);
+  pointer-events: none;
+}
+
+#skeletonSvg {
+  width: min(90%, 280px);
+  height: 260px;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 8px #e8c98a33);
+}
+
+.bone {
+  opacity: 0.07;
+  transition: opacity 0.4s steps(4), filter 0.3s;
+}
+.bone.found {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px #f0e0c0aa);
+  animation: bonePop 0.4s steps(5);
+}
+@keyframes bonePop {
+  0% { transform: scale(0.5); opacity: 0.2; }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.bone line, .bone path, .bone ellipse, .bone circle, .bone rect {
+  stroke: var(--bone);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+.bone .fill {
+  fill: var(--bone-dark);
+  stroke: var(--bone);
+  stroke-width: 2.2;
+}
+
+.dig-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: #1a120bcc;
+}
+.dig-overlay.active { display: flex; }
+
+.dig-icon {
+  font-size: 38px;
+  animation: digShake 0.22s steps(2) infinite;
+}
+@keyframes digShake {
+  0% { transform: translate(-3px, 2px) rotate(-10deg); }
+  50% { transform: translate(3px, -3px) rotate(10deg); }
+  100% { transform: translate(-3px, 2px) rotate(-10deg); }
+}
+.dig-text {
+  font-size: 9px;
+  margin-top: 10px;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+.progress-track {
+  height: 8px;
+  background: #2a1f14;
+  border: 2px solid var(--line);
+  width: 70%;
+  margin-top: 12px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--orange), var(--gold));
+}
+
+.particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  overflow: hidden;
+}
+.particle {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: var(--gold);
+  animation: particleFly 0.75s steps(6) forwards;
+}
+@keyframes particleFly {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+
+.feedback {
+  min-height: 34px;
+  text-align: center;
+  font-size: 8px;
+  color: var(--muted);
+  padding: 10px 4px 4px;
+  line-height: 1.5;
+}
+.feedback.good { color: var(--green); }
+.feedback.bad { color: var(--red); }
+.feedback.gold { color: var(--gold); }
+
+.parts-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+.part-chip {
+  font-size: 6px;
+  padding: 5px 2px;
+  text-align: center;
+  background: #1f160e;
+  border: 2px solid #4a3520;
+  color: #7a6040;
+  line-height: 1.3;
+}
+.part-chip.found {
+  color: var(--bone);
+  border-color: var(--gold);
+  background: #3a2b1c;
+  box-shadow: 0 0 6px #f0c14a44;
+}
+
+.main-btn {
+  width: 100%;
+  padding: 14px 10px;
+  background: var(--orange);
+  border: 3px solid #c45a20;
+  font-size: 10px;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 0 #8a3a10, 4px 4px 0 #000;
+  color: #1a120b;
+  transition: none;
+}
+.main-btn:active:not(:disabled) {
+  transform: translate(2px, 3px);
+  box-shadow: 0 1px 0 #8a3a10, 2px 2px 0 #000;
+}
+.main-btn:disabled {
+  filter: grayscale(0.55);
+  opacity: 0.55;
+  box-shadow: none;
+  cursor: default;
+}
+
+.btn-note {
+  text-align: center;
+  font-size: 6px;
+  color: var(--muted);
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+.sound-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.sound-btn {
+  flex: 1;
+  background: var(--panel2);
+  border: 2px solid var(--line);
+  padding: 10px 6px;
+  font-size: 7px;
+  box-shadow: 2px 2px 0 #000;
+  color: var(--sand);
+  line-height: 1.4;
+}
+.sound-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #000; }
+.sound-btn.off {
+  color: var(--muted);
+  border-color: #4a3520;
+}
+
+.reset-btn {
+  width: 100%;
+  background: #3a1a14;
+  border: 3px solid #8a3020;
+  color: var(--red);
+  padding: 12px;
+  font-size: 9px;
+  box-shadow: 3px 3px 0 #000;
+  margin-top: 6px;
+}
+.reset-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 #000; }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: #0a0806cc;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--panel);
+  border: 3px solid var(--line);
+  padding: 18px;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 6px 6px 0 #000;
+  text-align: center;
+}
+.modal-title {
+  font-size: 10px;
+  color: var(--gold);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.modal-text {
+  font-size: 7px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.modal-btns {
+  display: flex;
+  gap: 8px;
+}
+.modal-btn {
+  flex: 1;
+  padding: 12px 8px;
+  font-size: 8px;
+  box-shadow: 2px 2px 0 #000;
+}
+.modal-btn.cancel {
+  background: var(--panel2);
+  border: 2px solid var(--line);
+  color: var(--sand);
+}
+.modal-btn.confirm {
+  background: #3a1a14;
+  border: 2px solid #8a3020;
+  color: var(--red);
+}
+.modal-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #000; }
+
+.nav {
+  position: fixed;
+  z-index: 20;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #140e08;
+  border-top: 3px solid var(--line);
+  padding: 6px max(6px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom));
+}
+.nav-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+}
+.nav-btn {
+  padding: 6px 1px;
+  background: transparent;
+  color: #8a7050;
+  font-size: 5px;
+}
+.nav-btn .ico {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 3px;
+}
+.nav-btn.active {
+  color: var(--sand);
+  background: var(--panel2);
+  border: 2px solid var(--line);
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+.upgrade {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 2px solid #4a3520;
+}
+.upgrade:last-child { border-bottom: 0; }
+.up-ico {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: var(--panel2);
+  border: 2px solid var(--line);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.up-info { flex: 1; min-width: 0; }
+.up-name { font-size: 8px; }
+.up-desc { font-size: 6px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+.up-level { font-size: 6px; color: var(--gold); margin-top: 3px; }
+.buy {
+  background: #3a2b1c;
+  border: 2px solid #8a6030;
+  padding: 8px 8px;
+  font-size: 8px;
+  min-width: 78px;
+  box-shadow: 2px 2px 0 #000;
+  color: var(--sand);
+}
+.buy:disabled { opacity: 0.3; box-shadow: none; }
+.buy:active:not(:disabled) { transform: translate(1px,1px); box-shadow: 1px 1px 0 #000; }
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 2px solid #4a3520;
+}
+.list-item:last-child { border: 0; }
+.list-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--panel2);
+  border: 2px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.list-title { font-size: 8px; }
+.list-desc { font-size: 6px; color: var(--muted); margin-top: 2px; }
+.status {
+  margin-left: auto;
+  font-size: 7px;
+  color: var(--green);
+  text-align: right;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 8px;
+  padding: 24px 10px;
+  line-height: 1.6;
+}
+
+.daily-btn {
+  width: 100%;
+  background: #3a2b14;
+  border: 3px solid #8a6030;
+  color: var(--gold);
+  padding: 12px;
+  font-size: 9px;
+  box-shadow: 3px 3px 0 #000;
+}
+.daily-btn:disabled { opacity: 0.4; box-shadow: none; }
+.daily-btn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 1px 1px 0 #000; }
+
+.notice {
+  font-size: 6px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 10px;
+}
+
+.streak-bar {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  margin: 6px 0 4px;
+}
+.streak-dot {
+  width: 10px;
+  height: 10px;
+  background: #2a1f14;
+  border: 2px solid #5a4030;
+}
+.streak-dot.on {
+  background: var(--gold);
+  border-color: #c9a020;
+  box-shadow: 0 0 6px #f0c14a88;
+}
+
+.toast {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translate(-50%, -140%);
+  transition: transform 0.25s steps(4);
+  z-index: 40;
+  background: var(--panel2);
+  border: 3px solid var(--gold);
+  padding: 10px 14px;
+  box-shadow: 4px 4px 0 #000;
+  font-size: 8px;
+  max-width: 90%;
+  text-align: center;
+  line-height: 1.5;
+}
+.toast.show { transform: translate(-50%, 0); }
+
+.crt::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(26,18,11,0) 50%, rgba(0,0,0,0.07) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 50;
+}
+
+@media (min-width: 400px) {
+  .skeleton-stage { min-height: 310px; }
+  #skeletonSvg { height: 290px; }
+}
+</style>
+</head>
+<body class="crt">
+<div class="app">
+  <header class="top">
+    <div>
+      <div class="brand">СКЕЛЕТ <span>КЛИКЕР</span></div>
+      <div class="subbrand">КОПАЙ · СОБИРАЙ · УЛУЧШАЙ</div>
+    </div>
+    <div class="pill">🪙 <span id="coinsTop">0</span><small>МОНЕТЫ</small></div>
+  </header>
+
+  <!-- ИГРА -->
+  <main id="gamePage" class="page active">
+    <div class="stats">
+      <div class="stat"><div class="label">УДАЧА</div><div class="value" id="chanceStat">65%</div></div>
+      <div class="stat"><div class="label">СКОРОСТЬ</div><div class="value" id="cooldownStat">2.2с</div></div>
+      <div class="stat"><div class="label">СОБРАНО</div><div class="value" id="collectionStat">0</div></div>
+    </div>
+
+    <section class="card">
+      <div class="section-title">
+        <span id="skeletonName">СКЕЛЕТ №1</span>
+        <span class="badge" id="partCounter">0/4</span>
+      </div>
+
+      <div class="skeleton-stage" id="stage">
+        <div class="particles" id="particles"></div>
+        <svg id="skeletonSvg" viewBox="0 0 220 320" aria-label="Скелет">
+          <g id="b0" class="bone">
+            <ellipse class="fill" cx="110" cy="38" rx="29" ry="31"/>
+            <path d="M85 42 Q82 28 95 20 Q110 12 125 20 Q138 28 135 42" fill="none"/>
+            <ellipse cx="98" cy="34" rx="7" ry="8"/>
+            <ellipse cx="122" cy="34" rx="7" ry="8"/>
+            <circle cx="98" cy="35" r="2.5" fill="#1a120b"/>
+            <circle cx="122" cy="35" r="2.5" fill="#1a120b"/>
+            <path d="M106 44 L110 52 L114 44" fill="none"/>
+            <path d="M96 58 Q110 64 124 58"/>
+            <path d="M99 58 L99 66 M105 59 L105 67 M110 60 L110 68 M115 59 L115 67 M121 58 L121 66"/>
+            <path d="M86 48 Q90 55 96 58"/>
+            <path d="M134 48 Q130 55 124 58"/>
+          </g>
+          <g id="b1" class="bone">
+            <path d="M110 74 L110 162"/>
+            <path d="M101 80 L119 80 M101 92 L119 92 M101 104 L119 104 M101 116 L119 116 M101 128 L119 128 M101 140 L119 140 M101 152 L119 152 M101 161 L119 161"/>
+          </g>
+          <g id="b2" class="bone">
+            <path d="M106 84 C82 72 64 86 74 102 C82 113 97 111 106 105"/>
+            <path d="M114 84 C138 72 156 86 146 102 C138 113 123 111 114 105"/>
+            <path d="M106 102 C81 91 63 107 75 121 C84 131 98 128 106 122"/>
+            <path d="M114 102 C139 91 157 107 145 121 C136 131 122 128 114 122"/>
+            <path d="M106 120 C88 113 76 127 88 138 L106 139"/>
+            <path d="M114 120 C132 113 144 127 132 138 L114 139"/>
+          </g>
+          <g id="b3" class="bone">
+            <path d="M104 163 C88 148 68 158 75 177 C82 193 98 195 111 181"/>
+            <path d="M116 163 C132 148 152 158 145 177 C138 193 122 195 109 181"/>
+            <path d="M107 166 L113 183"/>
+            <ellipse class="fill" cx="110" cy="175" rx="7" ry="5"/>
+          </g>
+          <g id="b4" class="bone">
+            <path d="M78 90 L56 124 L43 158"/>
+            <circle class="fill" cx="56" cy="124" r="5.5"/>
+            <circle class="fill" cx="43" cy="158" r="4.5"/>
+          </g>
+          <g id="b5" class="bone">
+            <path d="M142 90 L164 124 L177 158"/>
+            <circle class="fill" cx="164" cy="124" r="5.5"/>
+            <circle class="fill" cx="177" cy="158" r="4.5"/>
+          </g>
+          <g id="b6" class="bone">
+            <path d="M43 158 L36 176 M43 158 L48 178 M43 158 L31 170 M43 158 L54 169"/>
+            <circle class="fill" cx="43" cy="158" r="4"/>
+          </g>
+          <g id="b7" class="bone">
+            <path d="M177 158 L170 176 M177 158 L182 178 M177 158 L165 169 M177 158 L188 170"/>
+            <circle class="fill" cx="177" cy="158" r="4"/>
+          </g>
+          <g id="b8" class="bone">
+            <path d="M96 183 L86 228 L79 274"/>
+            <circle class="fill" cx="86" cy="228" r="6"/>
+            <path d="M79 274 L64 289 L96 289"/>
+            <circle class="fill" cx="79" cy="274" r="3.5"/>
+          </g>
+          <g id="b9" class="bone">
+            <path d="M124 183 L134 228 L141 274"/>
+            <circle class="fill" cx="134" cy="228" r="6"/>
+            <path d="M141 274 L128 289 L160 289"/>
+            <circle class="fill" cx="141" cy="274" r="3.5"/>
+          </g>
+        </svg>
+
+        <div class="dig-overlay" id="digOverlay">
+          <div class="dig-icon">⛏️</div>
+          <div class="dig-text">РАСКОПКИ...</div>
+          <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+      </div>
+
+      <div class="feedback" id="feedback">Копай и ищи кости. Промах сбрасывает весь скелет!</div>
+
+      <div class="streak-bar" id="streakBar"></div>
+
+      <div class="parts-grid" id="partsGrid"></div>
+
+      <button class="main-btn" id="digButton">⛏️ КОПАТЬ</button>
+      <div class="btn-note">
+        Награда: <b id="nextReward">18</b> 🪙 · 
+        Серия: <b id="streakValue">0</b> · 
+        Множитель: <b id="multiValue">×1.0</b>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <span>🎁 ЕЖЕДНЕВКА</span>
+        <span class="badge" id="dailyStatus">ДОСТУПЕН</span>
+      </div>
+      <button class="daily-btn" id="dailyButton">ЗАБРАТЬ · +120 🪙</button>
+      <div class="notice">Заходи каждый день — бонус растёт. Пропуск сбрасывает серию.</div>
+    </section>
+  </main>
+
+  <!-- УЛУЧШЕНИЯ -->
+  <main id="upgradesPage" class="page">
+    <section class="card">
+      <div class="section-title">⚗️ УЛУЧШЕНИЯ <span class="badge">НАВСЕГДА</span></div>
+
+      <div class="upgrade">
+        <div class="up-ico">🍀</div>
+        <div class="up-info">
+          <div class="up-name">УДАЧА</div>
+          <div class="up-desc">Шанс найти кость выше</div>
+          <div class="up-level" id="luckLevel">Ур. 0 · 65%</div>
+        </div>
+        <button class="buy" id="buyLuck">🪙 180</button>
+      </div>
+
+      <div class="upgrade">
+        <div class="up-ico">⚡</div>
+        <div class="up-info">
+          <div class="up-name">СКОРОСТЬ</div>
+          <div class="up-desc">Быстрее копаешь</div>
+          <div class="up-level" id="speedLevel">Ур. 0 · 2.2с</div>
+        </div>
+        <button class="buy" id="buySpeed">🪙 220</button>
+      </div>
+
+      <div class="upgrade">
+        <div class="up-ico">💎</div>
+        <div class="up-info">
+          <div class="up-name">ЦЕННОСТЬ</div>
+          <div class="up-desc">Больше монет за кости</div>
+          <div class="up-level" id="valueLevel">Ур. 0 · ×1.0</div>
+        </div>
+        <button class="buy" id="buyValue">🪙 300</button>
+      </div>
+
+      <div class="upgrade">
+        <div class="up-ico">🔥</div>
+        <div class="up-info">
+          <div class="up-name">СЕРИЯ</div>
+          <div class="up-desc">Множитель за серию сильнее</div>
+          <div class="up-level" id="streakLevel">Ур. 0 · ×0.12</div>
+        </div>
+        <button class="buy" id="buyStreak">🪙 350</button>
+      </div>
+
+      <div class="notice">Цены растут. Улучшения сохраняются на этом устройстве.</div>
+    </section>
+  </main>
+
+  <!-- КОЛЛЕКЦИЯ -->
+  <main id="collectionPage" class="page">
+    <section class="card">
+      <div class="section-title">💀 КОЛЛЕКЦИЯ <span class="badge" id="collectionBadge">0</span></div>
+      <div id="collectionList" class="empty">Пока пусто. Собери первого скелета!</div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">📊 СТАТИСТИКА</div>
+      <div class="list-item">
+        <div class="list-icon">⛏️</div>
+        <div>
+          <div class="list-title">Всего раскопок</div>
+          <div class="list-desc">Завершённые попытки</div>
+        </div>
+        <div class="status" id="totalAttempts">0</div>
+      </div>
+      <div class="list-item">
+        <div class="list-icon">🦴</div>
+        <div>
+          <div class="list-title">Найдено частей</div>
+          <div class="list-desc">Успешные находки</div>
+        </div>
+        <div class="status" id="totalBones">0</div>
+      </div>
+      <div class="list-item">
+        <div class="list-icon">🔥</div>
+        <div>
+          <div class="list-title">Лучшая серия</div>
+          <div class="list-desc">Подряд без промаха</div>
+        </div>
+        <div class="status" id="bestStreak">0</div>
+      </div>
+      <div class="list-item">
+        <div class="list-icon">💀</div>
+        <div>
+          <div class="list-title">Собрано скелетов</div>
+          <div class="list-desc">Полных комплектов</div>
+        </div>
+        <div class="status" id="totalSkeletons">0</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- НАГРАДЫ -->
+  <main id="achievementsPage" class="page">
+    <section class="card">
+      <div class="section-title">🏆 НАГРАДЫ <span class="badge" id="achievementBadge">0/8</span></div>
+      <div id="achievementList"></div>
+    </section>
+  </main>
+
+  <!-- НАСТРОЙКИ -->
+  <main id="settingsPage" class="page">
+    <section class="card">
+      <div class="section-title"><span>🔊 ЗВУК</span></div>
+      <div class="sound-row">
+        <button class="sound-btn" id="musicBtn">МУЗЫКА<br>ВКЛ</button>
+        <button class="sound-btn" id="sfxBtn">ЗВУКИ<br>ВКЛ</button>
+      </div>
+      <div class="notice">Музыка — фоновая мелодия. Звуки — клики, находки и промахи.</div>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><span>⚠️ ОПАСНАЯ ЗОНА</span></div>
+      <div class="notice" style="margin-bottom:10px;">Сброс удалит все монеты, улучшения, коллекцию, достижения и прогресс. Это нельзя отменить.</div>
+      <button class="reset-btn" id="resetBtn">🗑 СБРОСИТЬ ПРОГРЕСС</button>
+    </section>
+  </main>
+</div>
+
+<!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <div class="modal-title">СБРОСИТЬ ВСЁ?</div>
+    <div class="modal-text">Весь прогресс будет удалён навсегда: монеты, улучшения, коллекция скелетов и достижения.<br><br>Ты уверен?</div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" id="resetCancel">ОТМЕНА</button>
+      <button class="modal-btn confirm" id="resetConfirm">СБРОСИТЬ</button>
+    </div>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <button class="nav-btn active" data-page="gamePage"><span class="ico">⛏️</span>ИГРА</button>
+    <button class="nav-btn" data-page="upgradesPage"><span class="ico">⚗️</span>УЛУЧШ.</button>
+    <button class="nav-btn" data-page="collectionPage"><span class="ico">💀</span>КОЛЛЕК.</button>
+    <button class="nav-btn" data-page="achievementsPage"><span class="ico">🏆</span>НАГРАДЫ</button>
+    <button class="nav-btn" data-page="settingsPage"><span class="ico">⚙️</span>НАСТР.</button>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const PART_SETS = {
+    1: [
+      { name: 'ГОЛОВА', bones: [0] },
+      { name: 'ТУЛОВИЩЕ', bones: [1, 2, 3] },
+      { name: 'РУКИ', bones: [4, 5, 6, 7] },
+      { name: 'НОГИ', bones: [8, 9] }
+    ],
+    2: [
+      { name: 'ГОЛОВА', bones: [0] },
+      { name: 'ТУЛОВИЩЕ', bones: [1, 2, 3] },
+      { name: 'Л.РУКА', bones: [4, 6] },
+      { name: 'П.РУКА', bones: [5, 7] },
+      { name: 'Л.НОГА', bones: [8] },
+      { name: 'П.НОГА', bones: [9] }
+    ],
+    3: [
+      { name: 'ГОЛОВА', bones: [0] },
+      { name: 'ХРЕБЕТ', bones: [1] },
+      { name: 'РЁБРА', bones: [2] },
+      { name: 'ТАЗ', bones: [3] },
+      { name: 'Л.РУКА', bones: [4, 6] },
+      { name: 'П.РУКА', bones: [5, 7] },
+      { name: 'Л.НОГА', bones: [8] },
+      { name: 'П.НОГА', bones: [9] }
+    ],
+    4: [
+      { name: 'ЧЕРЕП', bones: [0] },
+      { name: 'ХРЕБЕТ', bones: [1] },
+      { name: 'РЁБРА', bones: [2] },
+      { name: 'ТАЗ', bones: [3] },
+      { name: 'Л.РУКА', bones: [4] },
+      { name: 'П.РУКА', bones: [5] },
+      { name: 'Л.КИСТЬ', bones: [6] },
+      { name: 'П.КИСТЬ', bones: [7] },
+      { name: 'Л.НОГА', bones: [8] },
+      { name: 'П.НОГА', bones: [9] }
+    ]
+  };
+
+  function getParts() {
+    const level = Math.min(state.skeletonNo, 4);
+    return PART_SETS[level];
+  }
+
+  const ACHIEVEMENTS = [
+    { id: 'first_bone', name: 'ПЕРВАЯ КОСТЬ', desc: 'Найди любую часть', icon: '🦴', test: s => s.totalBones >= 1 },
+    { id: 'streak5', name: 'ГОРЯЧАЯ СЕРИЯ', desc: 'Серия 5 подряд', icon: '🔥', test: s => s.bestStreak >= 5 },
+    { id: 'streak10', name: 'НЕОСТАНОВИМЫЙ', desc: 'Серия 10 подряд', icon: '⚡', test: s => s.bestStreak >= 10 },
+    { id: 'one_skel', name: 'ПЕРВЫЙ СКЕЛЕТ', desc: 'Собери полный скелет', icon: '💀', test: s => s.collection.length >= 1 },
+    { id: 'five_skel', name: 'КОЛЛЕКЦИОНЕР', desc: 'Собери 5 скелетов', icon: '🏆', test: s => s.collection.length >= 5 },
+    { id: 'ten_skel', name: 'МАСТЕР КОСТЕЙ', desc: 'Собери 10 скелетов', icon: '👑', test: s => s.collection.length >= 10 },
+    { id: 'rich', name: 'БОГАЧ', desc: 'Накопи 8000 монет', icon: '🪙', test: s => s.coins >= 8000 },
+    { id: 'lucky', name: 'ВЕЗУНЧИК', desc: 'Удача 90%+', icon: '🍀', test: s => s.luckLevel >= 6 }
+  ];
+
+  const DEFAULT = {
+    coins: 0,
+    collection: [],
+    found: [],
+    attempts: 0,
+    totalBones: 0,
+    streak: 0,
+    bestStreak: 0,
+    luckLevel: 0,
+    speedLevel: 0,
+    valueLevel: 0,
+    streakLevel: 0,
+    dayStreak: 0,
+    lastDaily: '',
+    achievements: [],
+    skeletonNo: 1,
+    musicOn: true,
+    sfxOn: true
+  };
+
+  let state;
+  try {
+    state = { ...DEFAULT, ...JSON.parse(localStorage.getItem('skeletonDesertSave') || '{}') };
+    if (typeof state.found === 'number') state.found = [];
+    if (state.soundOn !== undefined) {
+      state.musicOn = state.soundOn;
+      state.sfxOn = state.soundOn;
+      delete state.soundOn;
+    }
+  } catch (e) {
+    state = { ...DEFAULT };
+  }
+
+  let busy = false;
+  let timer = null;
+  let toastTimer = null;
+  let audioCtx = null;
+  let musicNodes = [];
+  let musicPlaying = false;
+
+  const $ = id => document.getElementById(id);
+
+  const chance = () => Math.min(0.92, 0.62 + state.luckLevel * 0.05);
+  const cooldown = () => Math.max(0.65, +(2.2 - state.speedLevel * 0.16).toFixed(2));
+  const baseMulti = () => 1 + state.valueLevel * 0.28;
+  const streakBonus = () => state.streak * (0.12 + state.streakLevel * 0.04);
+  const totalMulti = () => +(baseMulti() + streakBonus()).toFixed(2);
+  const rewardFor = () => Math.round(18 * totalMulti() * (1 + state.skeletonNo * 0.04));
+  const money = n => Math.floor(n).toLocaleString('ru-RU');
+
+  function save() {
+    try { localStorage.setItem('skeletonDesertSave', JSON.stringify(state)); } catch (e) {}
+  }
+
+  function getCtx() {
+    if (!audioCtx) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (C) audioCtx = new C();
+    }
+    return audioCtx;
+  }
+
+  function beep(freq = 600, dur = 0.09, type = 'square', vol = 0.06) {
+    if (!state.sfxOn) return;
+    try {
+      const c = getCtx();
+      if (!c) return;
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.connect(g);
+      g.connect(c.destination);
+      o.start();
+      o.stop(c.currentTime + dur);
+    } catch (e) {}
+  }
+
+  function playClick() {
+    beep(420, 0.05, 'square', 0.04);
+    setTimeout(() => beep(280, 0.04, 'square', 0.03), 40);
+  }
+
+  function playSuccess() {
+    beep(520, 0.08, 'square', 0.05);
+    setTimeout(() => beep(720, 0.1, 'square', 0.05), 70);
+    setTimeout(() => beep(920, 0.12, 'triangle', 0.04), 140);
+  }
+
+  function playFail() {
+    beep(180, 0.15, 'sawtooth', 0.06);
+    setTimeout(() => beep(120, 0.2, 'sawtooth', 0.05), 100);
+  }
+
+  function playComplete() {
+    [520, 660, 780, 1040].forEach((f, i) => {
+      setTimeout(() => beep(f, 0.14, 'triangle', 0.05), i * 90);
+    });
+  }
+
+  function startMusic() {
+    if (musicPlaying || !state.musicOn) return;
+    const c = getCtx();
+    if (!c) return;
+    musicPlaying = true;
+
+    const drone = c.createOscillator();
+    const droneGain = c.createGain();
+    drone.type = 'triangle';
+    drone.frequency.value = 55;
+    droneGain.gain.value = 0.018;
+    drone.connect(droneGain);
+    droneGain.connect(c.destination);
+    drone.start();
+    musicNodes.push(drone, droneGain);
+
+    const notes = [196, 220, 247, 294, 330, 294, 247, 220];
+    let step = 0;
+    const melody = c.createOscillator();
+    const melGain = c.createGain();
+    melody.type = 'square';
+    melody.frequency.value = notes[0];
+    melGain.gain.value = 0.012;
+    melody.connect(melGain);
+    melGain.connect(c.destination);
+    melody.start();
+    musicNodes.push(melody, melGain);
+
+    const interval = setInterval(() => {
+      if (!musicPlaying) { clearInterval(interval); return; }
+      step = (step + 1) % notes.length;
+      try { melody.frequency.setValueAtTime(notes[step], c.currentTime); } catch(e) {}
+    }, 480);
+    musicNodes.push({ stop: () => clearInterval(interval) });
+
+    const pad = c.createOscillator();
+    const padGain = c.createGain();
+    pad.type = 'sine';
+    pad.frequency.value = 392;
+    padGain.gain.value = 0.008;
+    pad.connect(padGain);
+    padGain.connect(c.destination);
+    pad.start();
+    musicNodes.push(pad, padGain);
+  }
+
+  function stopMusic() {
+    musicPlaying = false;
+    musicNodes.forEach(n => {
+      try {
+        if (n.stop) n.stop();
+        if (n.disconnect) n.disconnect();
+      } catch (e) {}
+    });
+    musicNodes = [];
+  }
+
+  function toggleMusic() {
+    state.musicOn = !state.musicOn;
+    save();
+    updateSoundButtons();
+    if (state.musicOn) startMusic();
+    else stopMusic();
+    if (state.sfxOn) playClick();
+  }
+
+  function toggleSfx() {
+    state.sfxOn = !state.sfxOn;
+    save();
+    updateSoundButtons();
+    if (state.sfxOn) playClick();
+  }
+
+  function updateSoundButtons() {
+    const mBtn = $('musicBtn');
+    const sBtn = $('sfxBtn');
+    if (state.musicOn) {
+      mBtn.innerHTML = 'МУЗЫКА<br>ВКЛ';
+      mBtn.classList.remove('off');
+    } else {
+      mBtn.innerHTML = 'МУЗЫКА<br>ВЫКЛ';
+      mBtn.classList.add('off');
+    }
+    if (state.sfxOn) {
+      sBtn.innerHTML = 'ЗВУКИ<br>ВКЛ';
+      sBtn.classList.remove('off');
+    } else {
+      sBtn.innerHTML = 'ЗВУКИ<br>ВЫКЛ';
+      sBtn.classList.add('off');
+    }
+  }
+
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  function setFeedback(msg, type = '') {
+    const el = $('feedback');
+    el.textContent = msg;
+    el.className = 'feedback ' + type;
+  }
+
+  function spawnParticles(x, y, color = '#f0c14a', count = 12) {
+    const container = $('particles');
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = x + 'px';
+      p.style.top = y + 'px';
+      p.style.background = color;
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 35 + Math.random() * 55;
+      p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+      p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+      container.appendChild(p);
+      setTimeout(() => p.remove(), 750);
+    }
+  }
+
+  function getVisibleBones() {
+    const parts = getParts();
+    const bones = new Set();
+    state.found.forEach(pi => {
+      if (parts[pi]) parts[pi].bones.forEach(b => bones.add(b));
+    });
+    return bones;
+  }
+
+  function renderBones() {
+    const visible = getVisibleBones();
+    for (let i = 0; i < 10; i++) {
+      const el = $('b' + i);
+      if (el) el.classList.toggle('found', visible.has(i));
+    }
+
+    const parts = getParts();
+    $('partCounter').textContent = `${state.found.length}/${parts.length}`;
+    $('skeletonName').textContent = `СКЕЛЕТ №${state.skeletonNo}`;
+
+    const cols = parts.length <= 4 ? 4 : (parts.length <= 6 ? 3 : 5);
+    $('partsGrid').style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    $('partsGrid').innerHTML = parts.map((p, i) =>
+      `<div class="part-chip ${state.found.includes(i) ? 'found' : ''}">${state.found.includes(i) ? '✓' : '·'} ${p.name}</div>`
+    ).join('');
+
+    const maxDots = 10;
+    let html = '';
+    for (let i = 0; i < maxDots; i++) {
+      html += `<div class="streak-dot ${i < state.streak ? 'on' : ''}"></div>`;
+    }
+    $('streakBar').innerHTML = html;
+
+    $('nextReward').textContent = money(rewardFor());
+    $('streakValue').textContent = state.streak;
+    $('multiValue').textContent = '×' + totalMulti().toFixed(2);
+  }
+
+  function render() {
+    $('coinsTop').textContent = money(state.coins);
+    $('chanceStat').textContent = Math.round(chance() * 100) + '%';
+    $('cooldownStat').textContent = cooldown().toFixed(1) + 'с';
+    $('collectionStat').textContent = state.collection.length;
+
+    $('luckLevel').textContent = `Ур. ${state.luckLevel} · ${Math.round(chance() * 100)}%`;
+    $('speedLevel').textContent = `Ур. ${state.speedLevel} · ${cooldown().toFixed(1)}с`;
+    $('valueLevel').textContent = `Ур. ${state.valueLevel} · ×${baseMulti().toFixed(2)}`;
+    $('streakLevel').textContent = `Ур. ${state.streakLevel} · ×${(0.12 + state.streakLevel * 0.04).toFixed(2)}`;
+
+    const luckCost = 180 * Math.pow(1.8, state.luckLevel);
+    const speedCost = 220 * Math.pow(1.8, state.speedLevel);
+    const valueCost = 300 * Math.pow(1.85, state.valueLevel);
+    const streakCost = 350 * Math.pow(1.9, state.streakLevel);
+
+    $('buyLuck').textContent = state.luckLevel >= 8 ? 'МАКС' : `🪙 ${money(luckCost)}`;
+    $('buySpeed').textContent = state.speedLevel >= 9 ? 'МАКС' : `🪙 ${money(speedCost)}`;
+    $('buyValue').textContent = state.valueLevel >= 10 ? 'МАКС' : `🪙 ${money(valueCost)}`;
+    $('buyStreak').textContent = state.streakLevel >= 8 ? 'МАКС' : `🪙 ${money(streakCost)}`;
+
+    $('buyLuck').disabled = state.coins < luckCost || state.luckLevel >= 8;
+    $('buySpeed').disabled = state.coins < speedCost || state.speedLevel >= 9;
+    $('buyValue').disabled = state.coins < valueCost || state.valueLevel >= 10;
+    $('buyStreak').disabled = state.coins < streakCost || state.streakLevel >= 8;
+
+    $('collectionBadge').textContent = state.collection.length;
+    $('totalAttempts').textContent = money(state.attempts);
+    $('totalBones').textContent = money(state.totalBones);
+    $('bestStreak').textContent = money(state.bestStreak);
+    $('totalSkeletons').textContent = money(state.collection.length);
+
+    $('collectionList').className = state.collection.length ? '' : 'empty';
+    $('collectionList').innerHTML = state.collection.length
+      ? state.collection.slice().reverse().map(item =>
+          `<div class="list-item">
+            <div class="list-icon">💀</div>
+            <div>
+              <div class="list-title">СКЕЛЕТ №${item.no}</div>
+              <div class="list-desc">${item.date}</div>
+            </div>
+            <div class="status">ГОТОВ</div>
+          </div>`
+        ).join('')
+      : 'Пока пусто. Собери первого скелета!';
+
+    const today = new Date().toLocaleDateString('en-CA');
+    const canDaily = state.lastDaily !== today;
+    const dailyReward = 120 + Math.max(0, state.dayStreak) * 35;
+    $('dailyButton').disabled = !canDaily;
+    $('dailyButton').textContent = canDaily
+      ? `ЗАБРАТЬ · +${dailyReward} 🪙`
+      : 'УЖЕ ПОЛУЧЕН';
+    $('dailyStatus').textContent = canDaily ? 'ДОСТУПЕН' : 'ПОЛУЧЕН';
+
+    const unlocked = state.achievements.length;
+    $('achievementBadge').textContent = `${unlocked}/${ACHIEVEMENTS.length}`;
+    $('achievementList').innerHTML = ACHIEVEMENTS.map(a => {
+      const ok = state.achievements.includes(a.id);
+      return `<div class="list-item">
+        <div class="list-icon">${ok ? a.icon : '🔒'}</div>
+        <div>
+          <div class="list-title">${a.name}</div>
+          <div class="list-desc">${a.desc}</div>
+        </div>
+        <div class="status" style="color:${ok ? 'var(--green)' : 'var(--muted)'}">${ok ? 'ЕСТЬ' : 'НЕТ'}</div>
+      </div>`;
+    }).join('');
+
+    updateSoundButtons();
+    renderBones();
+  }
+
+  function checkAchievements() {
+    ACHIEVEMENTS.forEach(a => {
+      if (!state.achievements.includes(a.id) && a.test(state)) {
+        state.achievements.push(a.id);
+        showToast('🏆 ' + a.name);
+        beep(880, 0.16, 'triangle', 0.05);
+      }
+    });
+  }
+
+  function fail() {
+    state.streak = 0;
+    state.found = [];
+    renderBones();
+    setFeedback('Промах! Весь скелет рассыпался. Серия сброшена.', 'bad');
+    showToast('💥 Всё сброшено!');
+    playFail();
+    spawnParticles(140, 140, '#d94b3d', 14);
+  }
+
+  function completeSkeleton() {
+    const bonus = 350 + state.skeletonNo * 55 + state.streak * 25;
+    state.coins += bonus;
+    state.collection.push({
+      no: state.skeletonNo,
+      date: new Date().toLocaleDateString('ru-RU')
+    });
+    const done = state.skeletonNo;
+    state.skeletonNo++;
+    state.found = [];
+    state.streak = 0;
+
+    setFeedback(`СКЕЛЕТ №${done} СОБРАН! Бонус +${money(bonus)} 🪙`, 'gold');
+    showToast(`💀 СКЕЛЕТ №${done} ГОТОВ! +${money(bonus)}`);
+    playComplete();
+    spawnParticles(140, 130, '#f0c14a', 22);
+  }
+
+  function dig() {
+    if (busy) return;
+    busy = true;
+    playClick();
+
+    const duration = cooldown() * 1000;
+    $('digButton').disabled = true;
+    $('digButton').textContent = '⛏️ КОПАЕМ...';
+    $('digOverlay').classList.add('active');
+    $('progressFill').style.transition = 'none';
+    $('progressFill').style.width = '0%';
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        $('progressFill').style.transition = `width ${duration}ms linear`;
+        $('progressFill').style.width = '100%';
+      });
+    });
+
+    beep(240, 0.06, 'square', 0.035);
+
+    timer = setTimeout(() => {
+      $('digOverlay').classList.remove('active');
+      $('digButton').disabled = false;
+      $('digButton').textContent = '⛏️ КОПАТЬ';
+      busy = false;
+
+      state.attempts++;
+      const parts = getParts();
+
+      if (Math.random() < chance()) {
+        const missing = [];
+        for (let i = 0; i < parts.length; i++) {
+          if (!state.found.includes(i)) missing.push(i);
+        }
+
+        if (missing.length === 0) {
+          completeSkeleton();
+        } else {
+          const idx = missing[Math.floor(Math.random() * missing.length)];
+          const reward = rewardFor();
+          const part = parts[idx];
+
+          state.found.push(idx);
+          state.coins += reward;
+          state.totalBones++;
+          state.streak++;
+          state.bestStreak = Math.max(state.bestStreak, state.streak);
+
+          setFeedback(`+ ${part.name} · +${money(reward)} 🪙`, 'good');
+          showToast(`🦴 ${part.name}! +${money(reward)}`);
+          playSuccess();
+          spawnParticles(110 + (idx % 5) * 20, 90 + Math.floor(idx / 5) * 40, '#8bc34a', 11);
+
+          if (state.found.length >= parts.length) {
+            setTimeout(completeSkeleton, 450);
+          }
+        }
+      } else {
+        fail();
+      }
+
+      checkAchievements();
+      save();
+      render();
+    }, duration);
+  }
+
+  function buy(kind) {
+    playClick();
+    const map = {
+      luck:   { key: 'luckLevel',   base: 180, max: 8,  mult: 1.8 },
+      speed:  { key: 'speedLevel',  base: 220, max: 9,  mult: 1.8 },
+      value:  { key: 'valueLevel',  base: 300, max: 10, mult: 1.85 },
+      streak: { key: 'streakLevel', base: 350, max: 8,  mult: 1.9 }
+    };
+    const d = map[kind];
+    const level = state[d.key];
+    const cost = d.base * Math.pow(d.mult, level);
+
+    if (level >= d.max || state.coins < cost) return;
+
+    state.coins -= cost;
+    state[d.key]++;
+    save();
+    render();
+    showToast('Улучшение куплено!');
+    beep(600, 0.1, 'triangle', 0.05);
+  }
+
+  function doReset() {
+    stopMusic();
+    state = { ...DEFAULT };
+    // preserve sound preferences? or reset all — user asked full reset
+    state.musicOn = true;
+    state.sfxOn = true;
+    save();
+    render();
+    showToast('Прогресс полностью сброшен');
+    $('resetModal').classList.remove('show');
+    // go to game page
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === 'gamePage'));
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'gamePage'));
+  }
+
+  // EVENTS
+  $('digButton').addEventListener('click', dig);
+  $('buyLuck').addEventListener('click', () => buy('luck'));
+  $('buySpeed').addEventListener('click', () => buy('speed'));
+  $('buyValue').addEventListener('click', () => buy('value'));
+  $('buyStreak').addEventListener('click', () => buy('streak'));
+  $('musicBtn').addEventListener('click', toggleMusic);
+  $('sfxBtn').addEventListener('click', toggleSfx);
+
+  $('resetBtn').addEventListener('click', () => {
+    playClick();
+    $('resetModal').classList.add('show');
+  });
+  $('resetCancel').addEventListener('click', () => {
+    playClick();
+    $('resetModal').classList.remove('show');
+  });
+  $('resetConfirm').addEventListener('click', () => {
+    playClick();
+    doReset();
+  });
+
+  $('dailyButton').addEventListener('click', () => {
+    playClick();
+    const today = new Date().toLocaleDateString('en-CA');
+    if (state.lastDaily === today) return;
+
+    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+    state.dayStreak = state.lastDaily === yesterday ? state.dayStreak + 1 : 1;
+
+    const reward = 120 + (state.dayStreak - 1) * 35;
+    state.coins += reward;
+    state.lastDaily = today;
+    save();
+    render();
+    showToast(`Ежедневка: +${reward} 🪙 (серия ${state.dayStreak})`);
+    beep(750, 0.13, 'triangle', 0.05);
+  });
+
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playClick();
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === btn.dataset.page));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  if (window.Telegram && window.Telegram.WebApp) {
+    try {
+      Telegram.WebApp.ready();
+      Telegram.WebApp.expand();
+      Telegram.WebApp.setHeaderColor('#1a120b');
+      Telegram.WebApp.setBackgroundColor('#1a120b');
+    } catch (e) {}
+  }
+
+  document.body.addEventListener('click', () => {
+    if (state.musicOn && !musicPlaying) startMusic();
+  }, { once: true });
+
+  render();
+})();
+</script>
+</body>
+</html>
